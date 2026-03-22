@@ -1,5 +1,14 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { createDeck, getDeck, updateDeck as apiUpdateDeck, reorderCards as apiReorderCards, forkDeck as apiForkDeck, isApiAvailable } from '../lib/api';
+import {
+  createDeck,
+  getDeck,
+  updateDeck as apiUpdateDeck,
+  updateDeckColorLabels as apiUpdateColorLabels,
+  reorderCards as apiReorderCards,
+  forkDeck as apiForkDeck,
+  getSavedVersions,
+  isApiAvailable,
+} from '../lib/api';
 import useDeckStore from '../store/deckStore';
 
 // Auto-save interval in milliseconds (30 seconds)
@@ -13,6 +22,8 @@ const AUTO_SAVE_INTERVAL = 30000;
  * - Creating new deck if no ID
  * - Loading existing deck from API
  * - Updating URL when deck is created
+ * - Color labels syncing
+ * - Saved versions loading
  */
 export function useDeck() {
   const [isLoading, setIsLoading] = useState(true);
@@ -22,8 +33,10 @@ export function useDeck() {
   // Store actions
   const setDeck = useDeckStore((state) => state.setDeck);
   const setCards = useDeckStore((state) => state.setCards);
+  const setColorLabels = useDeckStore((state) => state.setColorLabels);
+  const setSavedVersions = useDeckStore((state) => state.setSavedVersions);
   const deck = useDeckStore((state) => state.deck);
-  const cards = useDeckStore((state) => state.cards);
+  const colorLabels = useDeckStore((state) => state.colorLabels);
   const saveStatus = useDeckStore((state) => state.saveStatus);
   const setSaveStatus = useDeckStore((state) => state.setSaveStatus);
 
@@ -75,12 +88,28 @@ export function useDeck() {
         setDeck({
           id: loadedDeck.id,
           title: loadedDeck.title,
+          colorLabels: loadedDeck.colorLabels,
           createdAt: loadedDeck.createdAt,
           updatedAt: loadedDeck.updatedAt,
         });
 
+        // Set color labels from deck
+        if (loadedDeck.colorLabels) {
+          setColorLabels(loadedDeck.colorLabels);
+        }
+
         setCards(cards);
         setIsOwner(ownerStatus);
+
+        // Load saved versions if owner
+        if (ownerStatus) {
+          try {
+            const versions = await getSavedVersions(deckId);
+            setSavedVersions(versions);
+          } catch (err) {
+            console.warn('Failed to load saved versions:', err);
+          }
+        }
       } else {
         // Create new deck
         const { deck: newDeck } = await createDeck();
@@ -88,9 +117,15 @@ export function useDeck() {
         setDeck({
           id: newDeck.id,
           title: newDeck.title,
+          colorLabels: newDeck.colorLabels,
           createdAt: newDeck.createdAt,
           updatedAt: newDeck.updatedAt,
         });
+
+        // Set default color labels
+        if (newDeck.colorLabels) {
+          setColorLabels(newDeck.colorLabels);
+        }
 
         // Clear sample cards for new deck
         setCards([]);
@@ -110,9 +145,13 @@ export function useDeck() {
           setDeck({
             id: newDeck.id,
             title: newDeck.title,
+            colorLabels: newDeck.colorLabels,
             createdAt: newDeck.createdAt,
             updatedAt: newDeck.updatedAt,
           });
+          if (newDeck.colorLabels) {
+            setColorLabels(newDeck.colorLabels);
+          }
           setCards([]);
           setDeckIdInUrl(newDeck.id);
           setIsOwner(true);
@@ -124,7 +163,7 @@ export function useDeck() {
     } finally {
       setIsLoading(false);
     }
-  }, [getDeckIdFromUrl, setDeckIdInUrl, setDeck, setCards]);
+  }, [getDeckIdFromUrl, setDeckIdInUrl, setDeck, setCards, setColorLabels, setSavedVersions]);
 
   /**
    * Update deck title (with API sync)
@@ -140,10 +179,27 @@ export function useDeck() {
         setSaveStatus('saved');
       } catch (err) {
         console.error('Failed to sync deck title:', err);
-        // Could revert here, but for MVP we'll keep the local change
       }
     }
   }, [deck.id, isOwner, setDeck, setSaveStatus]);
+
+  /**
+   * Update color labels (with API sync)
+   */
+  const updateColorLabels = useCallback(async (newColorLabels) => {
+    // Update store immediately (optimistic)
+    setColorLabels(newColorLabels);
+
+    // Sync to API if available and we're the owner
+    if (isApiAvailable() && deck.id && isOwner) {
+      try {
+        await apiUpdateColorLabels(deck.id, newColorLabels);
+        setSaveStatus('saved');
+      } catch (err) {
+        console.error('Failed to sync color labels:', err);
+      }
+    }
+  }, [deck.id, isOwner, setColorLabels, setSaveStatus]);
 
   /**
    * Save all unsaved changes to API
@@ -165,6 +221,10 @@ export function useDeck() {
       // Save deck title
       const currentDeck = useDeckStore.getState().deck;
       await apiUpdateDeck(deck.id, { title: currentDeck.title });
+
+      // Save color labels
+      const currentColorLabels = useDeckStore.getState().colorLabels;
+      await apiUpdateColorLabels(deck.id, currentColorLabels);
 
       // Save card order
       const currentCards = useDeckStore.getState().cards;
@@ -217,9 +277,15 @@ export function useDeck() {
       setDeck({
         id: newDeck.id,
         title: newDeck.title,
+        colorLabels: newDeck.colorLabels,
         createdAt: newDeck.createdAt,
         updatedAt: newDeck.updatedAt,
       });
+
+      // Set color labels from forked deck
+      if (newDeck.colorLabels) {
+        setColorLabels(newDeck.colorLabels);
+      }
 
       // Reload to get the forked cards
       const { cards: forkedCards } = await getDeck(newDeck.id);
@@ -238,7 +304,7 @@ export function useDeck() {
     } finally {
       setIsLoading(false);
     }
-  }, [deck.id, setDeck, setCards, setDeckIdInUrl, setSaveStatus]);
+  }, [deck.id, setDeck, setCards, setColorLabels, setDeckIdInUrl, setSaveStatus]);
 
   // Initialize on mount and when URL changes
   useEffect(() => {
@@ -259,6 +325,7 @@ export function useDeck() {
     isOwner,
     deckId: deck.id,
     updateDeckTitle,
+    updateColorLabels,
     reload: initializeDeck,
     saveStatus,
     saveChanges,

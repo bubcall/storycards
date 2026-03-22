@@ -1,10 +1,10 @@
 /**
  * API Service Layer
- * Provides CRUD operations for decks and cards via Supabase
- * These functions mirror the API routes defined in the spec
+ * Provides CRUD operations for decks, cards, and saved versions via Supabase
  */
 
 import { supabase, TABLES, saveOwnerToken, getOwnerToken, isSupabaseConfigured } from './supabase';
+import { DEFAULT_COLOR_LABELS } from './constants';
 
 // ============================================
 // DECK OPERATIONS
@@ -40,6 +40,7 @@ export async function createDeck(title = 'Untitled deck') {
     deck: {
       id: data.id,
       title: data.title,
+      colorLabels: data.color_labels || DEFAULT_COLOR_LABELS,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     },
@@ -91,6 +92,7 @@ export async function getDeck(deckId) {
     deck: {
       id: deckData.id,
       title: deckData.title,
+      colorLabels: deckData.color_labels || DEFAULT_COLOR_LABELS,
       createdAt: deckData.created_at,
       updatedAt: deckData.updated_at,
     },
@@ -139,6 +141,53 @@ export async function updateDeck(deckId, { title }) {
   return {
     id: data.id,
     title: data.title,
+    colorLabels: data.color_labels || DEFAULT_COLOR_LABELS,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}
+
+/**
+ * Update deck color labels
+ * PATCH /api/decks/:id/color-labels
+ *
+ * @param {string} deckId - Deck UUID
+ * @param {Object} colorLabels - New color labels object
+ * @returns {Promise<Object>}
+ */
+export async function updateDeckColorLabels(deckId, colorLabels) {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+
+  // Verify ownership
+  const { data: deckData } = await supabase
+    .from(TABLES.DECKS)
+    .select('owner_token')
+    .eq('id', deckId)
+    .single();
+
+  const storedToken = getOwnerToken(deckId);
+  if (!deckData || storedToken !== deckData.owner_token) {
+    throw new Error('Unauthorized: You do not own this deck');
+  }
+
+  const { data, error } = await supabase
+    .from(TABLES.DECKS)
+    .update({ color_labels: colorLabels })
+    .eq('id', deckId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating color labels:', error);
+    throw new Error('Failed to update color labels');
+  }
+
+  return {
+    id: data.id,
+    title: data.title,
+    colorLabels: data.color_labels || DEFAULT_COLOR_LABELS,
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
@@ -159,20 +208,48 @@ export async function forkDeck(deckId) {
   // Get original deck and cards
   const { deck: originalDeck, cards: originalCards } = await getDeck(deckId);
 
-  // Create new deck
-  const { deck: newDeck, ownerToken } = await createDeck(
-    `${originalDeck.title} (Copy)`
-  );
+  // Create new deck with same color labels
+  const { data: newDeckData, error: deckError } = await supabase
+    .from(TABLES.DECKS)
+    .insert({
+      title: `${originalDeck.title} (Copy)`,
+      color_labels: originalDeck.colorLabels,
+    })
+    .select()
+    .single();
 
-  // Copy all cards to new deck
+  if (deckError) {
+    console.error('Error creating forked deck:', deckError);
+    throw new Error('Failed to fork deck');
+  }
+
+  // Save owner token
+  saveOwnerToken(newDeckData.id, newDeckData.owner_token);
+
+  const newDeck = {
+    id: newDeckData.id,
+    title: newDeckData.title,
+    colorLabels: newDeckData.color_labels || DEFAULT_COLOR_LABELS,
+    createdAt: newDeckData.created_at,
+    updatedAt: newDeckData.updated_at,
+  };
+
+  // Copy all cards to new deck with new fields
   if (originalCards.length > 0) {
     const cardsToInsert = originalCards.map((card) => ({
       deck_id: newDeck.id,
+      type: card.type || 'story',
       title: card.title,
-      body: card.body,
-      category: card.category,
-      characters: card.characters,
+      front_text: card.frontText || card.body || '',
+      back_text: card.backText || '',
+      color: card.color || 'gray',
+      tags: card.tags || [],
+      linked_character_ids: card.linkedCharacterIds || [],
       position: card.position,
+      // Legacy fields for backwards compatibility
+      body: card.body || card.frontText || '',
+      category: card.category || 'plot',
+      characters: card.characters || [],
     }));
 
     const { error } = await supabase
@@ -187,7 +264,7 @@ export async function forkDeck(deckId) {
     }
   }
 
-  return { deck: newDeck, ownerToken };
+  return { deck: newDeck, ownerToken: newDeckData.owner_token };
 }
 
 // ============================================
@@ -199,7 +276,7 @@ export async function forkDeck(deckId) {
  * POST /api/decks/:id/cards
  *
  * @param {string} deckId - Deck UUID
- * @param {Object} cardData - Card data (title, body, category, characters)
+ * @param {Object} cardData - Card data
  * @returns {Promise<Object>}
  */
 export async function addCard(deckId, cardData) {
@@ -223,11 +300,18 @@ export async function addCard(deckId, cardData) {
     .from(TABLES.CARDS)
     .insert({
       deck_id: deckId,
+      type: cardData.type || 'story',
       title: cardData.title,
-      body: cardData.body || '',
-      category: cardData.category,
-      characters: cardData.characters || [],
+      front_text: cardData.frontText || '',
+      back_text: cardData.backText || '',
+      color: cardData.color || 'gray',
+      tags: cardData.tags || [],
+      linked_character_ids: cardData.linkedCharacterIds || [],
       position: nextPosition,
+      // Legacy fields for backwards compatibility
+      body: cardData.frontText || cardData.body || '',
+      category: cardData.category || 'plot',
+      characters: cardData.characters || [],
     })
     .select()
     .single();
@@ -255,11 +339,29 @@ export async function updateCard(cardId, updates) {
 
   // Build update object with only provided fields
   const updateData = {};
+
+  // New fields
+  if (updates.type !== undefined) updateData.type = updates.type;
   if (updates.title !== undefined) updateData.title = updates.title;
-  if (updates.body !== undefined) updateData.body = updates.body;
+  if (updates.frontText !== undefined) {
+    updateData.front_text = updates.frontText;
+    updateData.body = updates.frontText; // Keep legacy field in sync
+  }
+  if (updates.backText !== undefined) updateData.back_text = updates.backText;
+  if (updates.color !== undefined) updateData.color = updates.color;
+  if (updates.tags !== undefined) updateData.tags = updates.tags;
+  if (updates.linkedCharacterIds !== undefined) {
+    updateData.linked_character_ids = updates.linkedCharacterIds;
+  }
+  if (updates.position !== undefined) updateData.position = updates.position;
+
+  // Legacy field support
+  if (updates.body !== undefined) {
+    updateData.body = updates.body;
+    updateData.front_text = updates.body; // Keep new field in sync
+  }
   if (updates.category !== undefined) updateData.category = updates.category;
   if (updates.characters !== undefined) updateData.characters = updates.characters;
-  if (updates.position !== undefined) updateData.position = updates.position;
 
   const { data, error } = await supabase
     .from(TABLES.CARDS)
@@ -368,23 +470,147 @@ export async function reindexCardPositions(deckId) {
 }
 
 // ============================================
+// SAVED VERSIONS OPERATIONS
+// ============================================
+
+/**
+ * Get all saved versions for a deck
+ *
+ * @param {string} deckId - Deck UUID
+ * @returns {Promise<Array>}
+ */
+export async function getSavedVersions(deckId) {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+
+  const { data, error } = await supabase
+    .from(TABLES.SAVED_VERSIONS)
+    .select('*')
+    .eq('deck_id', deckId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching saved versions:', error);
+    throw new Error('Failed to fetch saved versions');
+  }
+
+  return data.map(transformSavedVersion);
+}
+
+/**
+ * Create a new saved version
+ *
+ * @param {string} deckId - Deck UUID
+ * @param {string} name - Version name
+ * @param {Array} cards - Current cards array
+ * @returns {Promise<Object>}
+ */
+export async function createSavedVersion(deckId, name, cards) {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+
+  // Verify ownership
+  const { data: deckData } = await supabase
+    .from(TABLES.DECKS)
+    .select('owner_token')
+    .eq('id', deckId)
+    .single();
+
+  const storedToken = getOwnerToken(deckId);
+  if (!deckData || storedToken !== deckData.owner_token) {
+    throw new Error('Unauthorized: You do not own this deck');
+  }
+
+  // Build positions and card IDs
+  const cardPositions = cards.map((card) => ({
+    cardId: card.id,
+    position: card.position,
+  }));
+  const cardIdsAtSave = cards.map((card) => card.id);
+
+  const { data, error } = await supabase
+    .from(TABLES.SAVED_VERSIONS)
+    .insert({
+      deck_id: deckId,
+      name,
+      card_positions: cardPositions,
+      card_ids_at_save: cardIdsAtSave,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating saved version:', error);
+    throw new Error('Failed to create saved version');
+  }
+
+  return transformSavedVersion(data);
+}
+
+/**
+ * Delete a saved version
+ *
+ * @param {string} versionId - Version UUID
+ * @returns {Promise<void>}
+ */
+export async function deleteSavedVersion(versionId) {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+
+  const { error } = await supabase
+    .from(TABLES.SAVED_VERSIONS)
+    .delete()
+    .eq('id', versionId);
+
+  if (error) {
+    console.error('Error deleting saved version:', error);
+    throw new Error('Failed to delete saved version');
+  }
+}
+
+// ============================================
 // HELPER FUNCTIONS
 // ============================================
 
 /**
  * Transform database card row to app format
+ * Supports both new and legacy fields
  */
 function transformCard(row) {
   return {
     id: row.id,
     deckId: row.deck_id,
+    type: row.type || 'story',
     title: row.title,
-    body: row.body || '',
-    category: row.category,
-    characters: row.characters || [],
+    frontText: row.front_text || row.body || '',
+    backText: row.back_text || '',
+    color: row.color || 'gray',
+    tags: row.tags || [],
+    linkedCharacterIds: row.linked_character_ids || [],
     position: row.position,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    // Legacy fields for backwards compatibility
+    body: row.body || row.front_text || '',
+    category: row.category || 'plot',
+    characters: row.characters || [],
+  };
+}
+
+/**
+ * Transform database saved version row to app format
+ */
+function transformSavedVersion(row) {
+  return {
+    id: row.id,
+    deckId: row.deck_id,
+    name: row.name,
+    cardPositions: row.card_positions || [],
+    cardIdsAtSave: row.card_ids_at_save || [],
+    createdAt: row.created_at,
   };
 }
 

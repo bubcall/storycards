@@ -44,32 +44,45 @@ function Onboarding() {
         {/* Description */}
         <p className="text-muted leading-relaxed mb-6">
           Storycards brings the classic screenwriter's index card method to your browser.
-          Create cards for your story beats, drag them to reorder your narrative,
-          filter by category or character, and let AI summarize your story arc.
-          Your deck auto-saves and can be shared with a simple link.
+          Write your story beats like physical index cards, flip them over to add notes,
+          and drag to arrange your narrative. Your deck auto-saves and can be shared with a link.
         </p>
 
         {/* Quick tips */}
         <div className="bg-cream/50 rounded-xl p-4 mb-6">
-          <h3 className="text-sm font-medium text-ink mb-2">Quick Tips</h3>
-          <ul className="text-sm text-muted space-y-1">
-            <li className="flex items-center gap-2">
-              <kbd className="px-1.5 py-0.5 bg-white rounded text-xs font-mono border border-faint">N</kbd>
-              <span>Create a new card</span>
+          <h3 className="text-sm font-medium text-ink mb-3">How it works</h3>
+          <ul className="text-sm text-muted space-y-2">
+            <li className="flex items-start gap-2">
+              <span className="text-ink font-mono text-xs bg-white px-1.5 py-0.5 rounded border border-faint mt-0.5">1</span>
+              <span><strong>Write</strong> your story beat on the front of the card</span>
             </li>
-            <li className="flex items-center gap-2">
-              <kbd className="px-1.5 py-0.5 bg-white rounded text-xs font-mono border border-faint">Cmd+Z</kbd>
-              <span>Undo last reorder</span>
+            <li className="flex items-start gap-2">
+              <span className="text-ink font-mono text-xs bg-white px-1.5 py-0.5 rounded border border-faint mt-0.5">2</span>
+              <span><strong>Flip</strong> to add notes, tags, and link characters</span>
             </li>
-            <li className="flex items-center gap-2">
-              <span className="w-4 h-4 flex items-center justify-center">
-                <svg className="w-3.5 h-3.5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                </svg>
-              </span>
-              <span>Drag cards to reorder your story</span>
+            <li className="flex items-start gap-2">
+              <span className="text-ink font-mono text-xs bg-white px-1.5 py-0.5 rounded border border-faint mt-0.5">3</span>
+              <span><strong>Place</strong> the card and drag to arrange your story</span>
             </li>
           </ul>
+
+          <div className="border-t border-faint/50 mt-3 pt-3">
+            <h4 className="text-xs font-medium text-muted mb-2">Keyboard Shortcuts</h4>
+            <div className="flex flex-wrap gap-4 text-xs text-muted">
+              <span className="flex items-center gap-1.5">
+                <kbd className="px-1.5 py-0.5 bg-white rounded font-mono border border-faint">N</kbd>
+                New card
+              </span>
+              <span className="flex items-center gap-1.5">
+                <kbd className="px-1.5 py-0.5 bg-white rounded font-mono border border-faint">F</kbd>
+                Flip card
+              </span>
+              <span className="flex items-center gap-1.5">
+                <kbd className="px-1.5 py-0.5 bg-white rounded font-mono border border-faint">Esc</kbd>
+                Cancel
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Actions */}

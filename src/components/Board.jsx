@@ -13,7 +13,7 @@ import {
   sortableKeyboardCoordinates,
   rectSortingStrategy,
 } from '@dnd-kit/sortable';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SortableCard from './SortableCard';
 import Card from './Card';
 import { BOARD_LAYOUT } from '../lib/constants';
@@ -24,13 +24,26 @@ import useDeckStore from '../store/deckStore';
  *
  * @param {Object} props
  * @param {Array} props.cards - Array of card objects
+ * @param {string} props.activeTab - Current active tab ('story' or 'characters')
  * @param {function} props.onReorder - Callback when cards are reordered (oldIndex, newIndex)
  * @param {function} props.onEdit - Callback when edit is clicked on a card
  * @param {function} props.onDelete - Callback when delete is clicked on a card
  */
-function Board({ cards = [], onReorder, onEdit, onDelete }) {
+function Board({ cards = [], activeTab = 'story', onReorder, onEdit, onDelete }) {
   const [activeId, setActiveId] = useState(null);
   const isShuffling = useDeckStore((state) => state.isShuffling);
+  const lastAddedCardId = useDeckStore((state) => state.ui.lastAddedCardId);
+  const clearLastAddedCard = useDeckStore((state) => state.clearLastAddedCard);
+
+  // Clear the last added card ID after the animation plays
+  useEffect(() => {
+    if (lastAddedCardId) {
+      const timer = setTimeout(() => {
+        clearLastAddedCard();
+      }, 300); // Match animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [lastAddedCardId, clearLastAddedCard]);
 
   // Configure sensors for pointer, touch, and keyboard
   const sensors = useSensors(
@@ -79,28 +92,36 @@ function Board({ cards = [], onReorder, onEdit, onDelete }) {
     setActiveId(null);
   }
 
-  // Empty state
+  // Empty state - contextual based on active tab
   if (cards.length === 0) {
+    const isCharactersTab = activeTab === 'characters';
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center">
         <div className="w-16 h-16 mb-4 rounded-full bg-faint/20 flex items-center justify-center">
-          <svg
-            className="w-8 h-8 text-muted"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
+          {isCharactersTab ? (
+            <svg className="w-8 h-8 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          ) : (
+            <svg className="w-8 h-8 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+            </svg>
+          )}
         </div>
-        <h3 className="font-display text-xl text-ink mb-2">No cards yet</h3>
+        <h3 className="font-display text-xl text-ink mb-2">
+          {isCharactersTab ? 'No characters yet' : 'No story cards yet'}
+        </h3>
         <p className="text-muted text-sm max-w-xs">
-          Start building your story by adding your first card. Press <kbd className="px-1.5 py-0.5 bg-cream rounded text-xs font-mono">N</kbd> or click the + button.
+          {isCharactersTab ? (
+            <>
+              Create character cards to track your cast. Link them to story beats to see who appears where.
+              Press <kbd className="px-1.5 py-0.5 bg-cream rounded text-xs font-mono">N</kbd> to create your first character.
+            </>
+          ) : (
+            <>
+              Start building your story by adding your first card. Press <kbd className="px-1.5 py-0.5 bg-cream rounded text-xs font-mono">N</kbd> or click the peeking card at the bottom.
+            </>
+          )}
         </p>
       </div>
     );
@@ -122,22 +143,28 @@ function Board({ cards = [], onReorder, onEdit, onDelete }) {
             gap: `${BOARD_LAYOUT.CARD_GAP}px`,
           }}
         >
-          {cards.map((card, index) => (
-            <div
-              key={card.id}
-              className={isShuffling ? 'transition-transform duration-200' : ''}
-              style={isShuffling ? {
-                transform: `translate(${(Math.random() - 0.5) * 40}px, ${(Math.random() - 0.5) * 40}px) rotate(${(Math.random() - 0.5) * 10}deg)`,
-                opacity: 0.7,
-              } : {}}
-            >
-              <SortableCard
-                {...card}
-                onEdit={onEdit}
-                onDelete={onDelete}
-              />
-            </div>
-          ))}
+          {cards.map((card, index) => {
+            const isNewlyAdded = card.id === lastAddedCardId;
+            return (
+              <div
+                key={card.id}
+                className={`
+                  ${isShuffling ? 'transition-transform duration-200' : ''}
+                  ${isNewlyAdded ? 'animate-card-place' : ''}
+                `}
+                style={isShuffling ? {
+                  transform: `translate(${(Math.random() - 0.5) * 40}px, ${(Math.random() - 0.5) * 40}px) rotate(${(Math.random() - 0.5) * 10}deg)`,
+                  opacity: 0.7,
+                } : {}}
+              >
+                <SortableCard
+                  {...card}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              </div>
+            );
+          })}
         </div>
       </SortableContext>
 

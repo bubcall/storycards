@@ -1,123 +1,123 @@
 import { useEffect, useCallback, useState } from 'react';
 import TopBar from './components/TopBar';
-import Board from './components/Board';
-import Sidebar from './components/Sidebar';
+import Workspace from './components/Workspace';
 import Onboarding from './components/Onboarding';
+import CardComposer from './components/CardComposer';
+import PeekingCard from './components/PeekingCard';
+import SettingsModal from './components/SettingsModal';
 import useDeckStore from './store/deckStore';
 import useDeck from './hooks/useDeck';
 import useCards from './hooks/useCards';
+import { CARD_TYPES } from './lib/constants';
 
 function App() {
   // Deck loading and persistence
-  const { isLoading, error, isOwner, updateDeckTitle, saveStatus, forkDeck } = useDeck();
+  const { isLoading, error, isOwner, updateDeckTitle, updateColorLabels, saveStatus, forkDeck } = useDeck();
+
+  // Settings modal state
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Card operations with API sync
   const { addCard, updateCard, deleteCard, reorderCards, shuffleCards, undoReorder } = useCards();
 
-  // Reorder history for undo (works for drag-drop and shuffle)
+  // Reorder history for undo
   const canUndoReorder = useDeckStore((state) => state.reorderHistory.length > 0);
 
   // Deck state from store
   const deck = useDeckStore((state) => state.deck);
   const cards = useDeckStore((state) => state.cards);
+  const colorLabels = useDeckStore((state) => state.colorLabels);
 
   // UI state from store
   const ui = useDeckStore((state) => state.ui);
+  const setActiveTab = useDeckStore((state) => state.setActiveTab);
+  const setViewMode = useDeckStore((state) => state.setViewMode);
+  const openComposer = useDeckStore((state) => state.openComposer);
+  const closeComposer = useDeckStore((state) => state.closeComposer);
+  const flipComposer = useDeckStore((state) => state.flipComposer);
+  const togglePeekingCard = useDeckStore((state) => state.togglePeekingCard);
+
+  // Legacy UI state (kept for transition)
   const setFilter = useDeckStore((state) => state.setFilter);
   const setCharacterFilter = useDeckStore((state) => state.setCharacterFilter);
   const setSearchQuery = useDeckStore((state) => state.setSearchQuery);
   const getAllCharacters = useDeckStore((state) => state.getAllCharacters);
   const setEditingCard = useDeckStore((state) => state.setEditingCard);
   const clearEditingCard = useDeckStore((state) => state.clearEditingCard);
-  const setSidebarTab = useDeckStore((state) => state.setSidebarTab);
 
   // Selectors
-  const getFilteredCards = useDeckStore((state) => state.getFilteredCards);
   const getEditingCard = useDeckStore((state) => state.getEditingCard);
+  const getStoryCards = useDeckStore((state) => state.getStoryCards);
 
-  const filteredCards = getFilteredCards();
   const editingCard = getEditingCard();
-
-  // Mobile sidebar state
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Handlers
   const handleNewCard = useCallback(() => {
-    clearEditingCard();
-    setSidebarTab('form');
-    setIsMobileSidebarOpen(true);
-  }, [clearEditingCard, setSidebarTab]);
+    openComposer(null, 'front');
+  }, [openComposer]);
 
-  const handleToggleMobileSidebar = useCallback(() => {
-    setIsMobileSidebarOpen((prev) => !prev);
-  }, []);
-
-  const handleCloseMobileSidebar = useCallback(() => {
-    setIsMobileSidebarOpen(false);
-  }, []);
-
-  const handleEdit = (id) => {
+  const handleEdit = useCallback((cardId) => {
     if (!isOwner) return;
-    setEditingCard(id);
-    setIsMobileSidebarOpen(true);
-  };
+    openComposer(cardId, 'front');
+  }, [isOwner, openComposer]);
 
-  const handleDelete = (id) => {
+  const handleDelete = useCallback((id) => {
     if (!isOwner) return;
     if (window.confirm('Are you sure you want to delete this card?')) {
       deleteCard(id);
     }
-  };
+  }, [isOwner, deleteCard]);
 
-  const handleSaveCard = (cardData) => {
+  const handleSaveCard = useCallback((cardData) => {
     if (!isOwner) return;
     if (cardData.id) {
       updateCard(cardData.id, cardData);
-      clearEditingCard();
     } else {
-      addCard(cardData);
+      // Add type based on active tab
+      const type = ui.activeTab === 'characters' ? CARD_TYPES.CHARACTER : CARD_TYPES.STORY;
+      addCard({ ...cardData, type });
     }
-  };
+    closeComposer();
+  }, [isOwner, updateCard, addCard, closeComposer, ui.activeTab]);
 
-  const handleCancelEdit = () => {
-    clearEditingCard();
-  };
+  const handleCancelEdit = useCallback(() => {
+    closeComposer();
+  }, [closeComposer]);
 
-  const handleSummarize = () => {
-    setSidebarTab('summary');
-  };
-
-  const handleShare = () => {
+  const handleShare = useCallback(() => {
     const url = window.location.href;
     navigator.clipboard.writeText(url).then(() => {
       alert('Link copied to clipboard!');
     }).catch(() => {
       alert(`Share this link: ${url}`);
     });
-  };
+  }, []);
 
-  const handleExport = () => {
-    // Build export data
+  const handleExport = useCallback(() => {
+    const storyCards = getStoryCards();
     const exportData = {
       deck: {
         id: deck.id,
         title: deck.title,
+        colorLabels: colorLabels,
         createdAt: deck.createdAt,
         updatedAt: deck.updatedAt,
       },
       cards: cards.map((card) => ({
         id: card.id,
+        type: card.type,
         title: card.title,
-        body: card.body,
-        category: card.category,
-        characters: card.characters,
+        frontText: card.frontText,
+        backText: card.backText,
+        color: card.color,
+        tags: card.tags,
+        linkedCharacterIds: card.linkedCharacterIds,
         position: card.position,
       })),
       exportedAt: new Date().toISOString(),
-      version: '1.0',
+      version: '2.0',
     };
 
-    // Create blob and download
     const blob = new Blob([JSON.stringify(exportData, null, 2)], {
       type: 'application/json',
     });
@@ -129,40 +129,50 @@ function App() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  };
+  }, [deck, cards, colorLabels, getStoryCards]);
 
-  const handleFork = async () => {
+  const handleFork = useCallback(async () => {
     const newDeck = await forkDeck();
     if (newDeck) {
       alert(`Created your own copy: "${newDeck.title}"`);
     }
-  };
+  }, [forkDeck]);
 
-  const handleCardClick = (cardId) => {
-    // Scroll to card on board and briefly highlight it
-    const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
-    if (cardElement) {
-      cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Add highlight effect
-      cardElement.classList.add('ring-2', 'ring-plot', 'ring-offset-2');
-      setTimeout(() => {
-        cardElement.classList.remove('ring-2', 'ring-plot', 'ring-offset-2');
-      }, 2000);
-    }
-  };
+  const handleOpenSettings = useCallback(() => {
+    setSettingsOpen(true);
+  }, []);
+
+  const handleSaveSettings = useCallback((newColorLabels) => {
+    updateColorLabels(newColorLabels);
+  }, [updateColorLabels]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event) => {
       const tagName = event.target.tagName.toLowerCase();
-      if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+      const isTyping = tagName === 'input' || tagName === 'textarea' || tagName === 'select';
+
+      // Skip shortcuts when typing in text fields
+      if (isTyping) {
         return;
       }
 
-      // N - New card
-      if ((event.key === 'n' || event.key === 'N') && isOwner) {
+      // N - New card (when not typing)
+      if ((event.key === 'n' || event.key === 'N') && isOwner && !ui.composerOpen) {
         event.preventDefault();
         handleNewCard();
+      }
+
+      // F - Flip card (when composer is open and not typing)
+      if ((event.key === 'f' || event.key === 'F') && ui.composerOpen) {
+        event.preventDefault();
+        flipComposer();
+      }
+
+      // Escape - Close composer
+      if (event.key === 'Escape' && ui.composerOpen) {
+        event.preventDefault();
+        closeComposer();
       }
 
       // Cmd/Ctrl+Z - Undo last reorder
@@ -174,7 +184,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNewCard, isOwner, canUndoReorder, undoReorder]);
+  }, [handleNewCard, isOwner, canUndoReorder, undoReorder, ui.composerOpen, flipComposer, closeComposer]);
 
   // Loading state
   if (isLoading) {
@@ -238,9 +248,16 @@ function App() {
         onTitleChange={isOwner ? updateDeckTitle : undefined}
         onNewCard={isOwner ? handleNewCard : undefined}
         onShuffle={isOwner ? shuffleCards : undefined}
-        onSummarize={handleSummarize}
         onShare={handleShare}
         onExport={handleExport}
+        onSettings={isOwner ? handleOpenSettings : undefined}
+        activeTab={ui.activeTab}
+        onTabChange={setActiveTab}
+        viewMode={ui.viewMode}
+        onViewModeChange={setViewMode}
+        peekingCardVisible={ui.peekingCardVisible}
+        onTogglePeekingCard={isOwner ? togglePeekingCard : undefined}
+        // Legacy props (kept for transition)
         activeFilter={ui.activeFilter}
         onFilterChange={setFilter}
         characterFilter={ui.characterFilter}
@@ -250,94 +267,35 @@ function App() {
         onSearchChange={setSearchQuery}
         readOnly={!isOwner}
         saveStatus={saveStatus}
-        onMenuToggle={handleToggleMobileSidebar}
-        isMobileSidebarOpen={isMobileSidebarOpen}
       />
 
-      {/* Main content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Board */}
-        <main className="flex-1 overflow-auto p-4 md:p-6">
-          <Board
-            cards={filteredCards}
-            onReorder={isOwner ? reorderCards : undefined}
-            onEdit={isOwner ? handleEdit : undefined}
-            onDelete={isOwner ? handleDelete : undefined}
-            readOnly={!isOwner}
-          />
-        </main>
+      {/* Main workspace */}
+      <Workspace
+        onReorder={isOwner ? reorderCards : undefined}
+        onEdit={isOwner ? handleEdit : undefined}
+        onDelete={isOwner ? handleDelete : undefined}
+        readOnly={!isOwner}
+      />
 
-        {/* Desktop Sidebar (lg and up) */}
-        <div className="hidden lg:block">
-          <Sidebar
-            activeTab={ui.sidebarTab}
-            onTabChange={setSidebarTab}
-            editingCard={editingCard}
-            onSaveCard={isOwner ? handleSaveCard : undefined}
-            onCancelEdit={handleCancelEdit}
-            cards={cards}
-            deckId={deck.id}
-            onCardClick={handleCardClick}
-            onShuffle={isOwner ? shuffleCards : undefined}
-            readOnly={!isOwner}
-          />
-        </div>
-      </div>
+      {/* Peeking card at bottom */}
+      {isOwner && ui.peekingCardVisible && !ui.composerOpen && (
+        <PeekingCard onClick={handleNewCard} />
+      )}
 
-      {/* Mobile Bottom Sheet Sidebar (below lg) */}
-      <div className="lg:hidden">
-        {/* Backdrop */}
-        {isMobileSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/30 z-40"
-            onClick={handleCloseMobileSidebar}
-          />
-        )}
+      {/* Card composer modal */}
+      {ui.composerOpen && (
+        <CardComposer
+          onSave={handleSaveCard}
+          onCancel={handleCancelEdit}
+        />
+      )}
 
-        <div
-          className={`
-            fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-2xl shadow-2xl
-            transform transition-transform duration-300 ease-out
-            ${isMobileSidebarOpen ? 'translate-y-0' : 'translate-y-full'}
-          `}
-          style={{ maxHeight: '85vh' }}
-        >
-          {/* Handle bar */}
-          <div className="flex justify-center py-2">
-            <div className="w-12 h-1.5 bg-faint rounded-full" />
-          </div>
-
-          {/* Close button */}
-          <button
-            onClick={handleCloseMobileSidebar}
-            className="absolute top-3 right-3 p-1 text-muted hover:text-ink"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          {/* Sidebar content */}
-          <div className="overflow-auto" style={{ maxHeight: 'calc(85vh - 40px)' }}>
-            <Sidebar
-              activeTab={ui.sidebarTab}
-              onTabChange={setSidebarTab}
-              editingCard={editingCard}
-              onSaveCard={isOwner ? handleSaveCard : undefined}
-              onCancelEdit={handleCancelEdit}
-              cards={cards}
-              deckId={deck.id}
-              onCardClick={(id) => {
-                handleCardClick(id);
-                handleCloseMobileSidebar();
-              }}
-              onShuffle={isOwner ? shuffleCards : undefined}
-              readOnly={!isOwner}
-              isMobile
-            />
-          </div>
-        </div>
-      </div>
+      {/* Settings modal */}
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onSave={handleSaveSettings}
+      />
     </div>
   );
 }

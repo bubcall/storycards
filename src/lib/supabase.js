@@ -31,6 +31,7 @@ export const isSupabaseConfigured = () => {
 export const TABLES = {
   DECKS: 'decks',
   CARDS: 'cards',
+  SAVED_VERSIONS: 'saved_versions',
 };
 
 /**

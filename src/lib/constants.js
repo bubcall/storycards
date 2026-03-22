@@ -1,57 +1,113 @@
 /**
  * Storycards Design System Constants
- * Category definitions, colors, and labels for the application
+ * Color system, card types, tags, and layout for the application
  */
 
-// Category enum values
-export const CATEGORIES = {
-  PLOT: 'plot',
+// ============================================
+// CARD TYPES
+// ============================================
+
+export const CARD_TYPES = {
+  STORY: 'story',
   CHARACTER: 'character',
-  WORLD: 'world',
-  THEME: 'theme',
-  TWIST: 'twist',
-  SCENE: 'scene',
 };
 
-// Category display labels
-export const CATEGORY_LABELS = {
-  [CATEGORIES.PLOT]: 'Plot',
-  [CATEGORIES.CHARACTER]: 'Character',
-  [CATEGORIES.WORLD]: 'World Building',
-  [CATEGORIES.THEME]: 'Theme',
-  [CATEGORIES.TWIST]: 'Twist',
-  [CATEGORIES.SCENE]: 'Scene',
+// ============================================
+// 10-COLOR WRITING FUNCTION SYSTEM
+// ============================================
+
+// Color keys
+export const CARD_COLORS = {
+  RED: 'red',
+  BLUE: 'blue',
+  GREEN: 'green',
+  YELLOW: 'yellow',
+  PURPLE: 'purple',
+  ORANGE: 'orange',
+  PINK: 'pink',
+  GRAY: 'gray',
+  BROWN: 'brown',
+  TEAL: 'teal',
 };
 
-// Category colors (matching CSS custom properties)
-export const CATEGORY_COLORS = {
-  [CATEGORIES.PLOT]: '#C8430A',      // burnt orange
-  [CATEGORIES.CHARACTER]: '#1A6B5A', // forest green
-  [CATEGORIES.WORLD]: '#2952A3',     // deep blue
-  [CATEGORIES.THEME]: '#7B3FA8',     // purple
-  [CATEGORIES.TWIST]: '#B8830A',     // amber
-  [CATEGORIES.SCENE]: '#555555',     // neutral gray
+// Color hex values
+export const COLOR_VALUES = {
+  [CARD_COLORS.RED]: '#DC2626',
+  [CARD_COLORS.BLUE]: '#2563EB',
+  [CARD_COLORS.GREEN]: '#16A34A',
+  [CARD_COLORS.YELLOW]: '#CA8A04',
+  [CARD_COLORS.PURPLE]: '#9333EA',
+  [CARD_COLORS.ORANGE]: '#EA580C',
+  [CARD_COLORS.PINK]: '#DB2777',
+  [CARD_COLORS.GRAY]: '#6B7280',
+  [CARD_COLORS.BROWN]: '#92400E',
+  [CARD_COLORS.TEAL]: '#0D9488',
 };
 
-// Category Tailwind class names for backgrounds
-export const CATEGORY_BG_CLASSES = {
-  [CATEGORIES.PLOT]: 'bg-plot',
-  [CATEGORIES.CHARACTER]: 'bg-character',
-  [CATEGORIES.WORLD]: 'bg-world',
-  [CATEGORIES.THEME]: 'bg-theme',
-  [CATEGORIES.TWIST]: 'bg-twist',
-  [CATEGORIES.SCENE]: 'bg-scene',
+// Default color labels (user-customizable per deck)
+export const DEFAULT_COLOR_LABELS = {
+  [CARD_COLORS.RED]: 'Action / High tension',
+  [CARD_COLORS.BLUE]: 'Reflection / Emotion',
+  [CARD_COLORS.GREEN]: 'Description / Setting',
+  [CARD_COLORS.YELLOW]: 'Dialogue / Interaction',
+  [CARD_COLORS.PURPLE]: 'Mystery / Omen',
+  [CARD_COLORS.ORANGE]: 'Conflict escalation',
+  [CARD_COLORS.PINK]: 'Relationship / Intimacy',
+  [CARD_COLORS.GRAY]: 'Transition / Utility beat',
+  [CARD_COLORS.BROWN]: 'Backstory / Memory',
+  [CARD_COLORS.TEAL]: 'Discovery / Revelation',
 };
 
-// Array of all categories for iteration (filter pills, dropdowns)
-export const CATEGORY_LIST = [
-  { value: CATEGORIES.PLOT, label: CATEGORY_LABELS[CATEGORIES.PLOT], color: CATEGORY_COLORS[CATEGORIES.PLOT] },
-  { value: CATEGORIES.CHARACTER, label: CATEGORY_LABELS[CATEGORIES.CHARACTER], color: CATEGORY_COLORS[CATEGORIES.CHARACTER] },
-  { value: CATEGORIES.WORLD, label: CATEGORY_LABELS[CATEGORIES.WORLD], color: CATEGORY_COLORS[CATEGORIES.WORLD] },
-  { value: CATEGORIES.THEME, label: CATEGORY_LABELS[CATEGORIES.THEME], color: CATEGORY_COLORS[CATEGORIES.THEME] },
-  { value: CATEGORIES.TWIST, label: CATEGORY_LABELS[CATEGORIES.TWIST], color: CATEGORY_COLORS[CATEGORIES.TWIST] },
-  { value: CATEGORIES.SCENE, label: CATEGORY_LABELS[CATEGORIES.SCENE], color: CATEGORY_COLORS[CATEGORIES.SCENE] },
+// Color list for iteration (ColorSelector, etc.)
+export const COLOR_LIST = Object.values(CARD_COLORS).map((color) => ({
+  value: color,
+  hex: COLOR_VALUES[color],
+  defaultLabel: DEFAULT_COLOR_LABELS[color],
+}));
+
+// ============================================
+// STORY FUNCTION TAGS
+// ============================================
+
+export const STORY_TAGS = [
+  'Twist',
+  'Reveal',
+  'Setup',
+  'Payoff',
+  'Conflict',
+  'Foreshadowing',
+  'Clue',
+  'Decision',
+  'Reversal',
+  'Theme',
+  'Climax',
+  'Resolution',
+  'Inciting Incident',
+  'Midpoint',
+  'Stakes',
 ];
+
+// ============================================
+// VIEW MODES
+// ============================================
+
+export const VIEW_MODES = {
+  MANUAL: 'manual',
+  CREATED: 'created',
+  COLOR: 'color',
+  TAGS: 'tags',
+};
+
+export const VIEW_MODE_LABELS = {
+  [VIEW_MODES.MANUAL]: 'Manual Order',
+  [VIEW_MODES.CREATED]: 'Date Created',
+  [VIEW_MODES.COLOR]: 'By Color',
+  [VIEW_MODES.TAGS]: 'By Tags',
+};
+
+// ============================================
+// BASE DESIGN SYSTEM
+// ============================================
 
 // Base design system colors
 export const COLORS = {
@@ -68,34 +124,83 @@ export const FONTS = {
   mono: "'DM Mono', monospace",
 };
 
-// Card field constraints
+// ============================================
+// CARD CONSTRAINTS
+// ============================================
+
 export const CARD_CONSTRAINTS = {
   TITLE_MAX_LENGTH: 80,
-  BODY_MAX_LENGTH: 500,
+  FRONT_TEXT_MAX_LENGTH: 500,
+  BACK_TEXT_MAX_LENGTH: 1000,
 };
 
-// Board layout constants
+// ============================================
+// LAYOUT CONSTANTS
+// ============================================
+
 export const BOARD_LAYOUT = {
-  MIN_CARD_WIDTH: 220,
-  CARD_GAP: 14,
-  SIDEBAR_WIDTH: 340,
+  MIN_CARD_WIDTH: 240,
+  CARD_GAP: 16,
+  WORKSPACE_PADDING: 32,
+  WORKSPACE_PADDING_MOBILE: 16,
 };
-
-// Filter options including "All"
-export const FILTER_OPTIONS = [
-  { value: 'all', label: 'All', color: null },
-  ...CATEGORY_LIST,
-];
 
 // Default deck title
 export const DEFAULT_DECK_TITLE = 'Untitled deck';
 
-// Helper function to get category color by value
-export function getCategoryColor(category) {
-  return CATEGORY_COLORS[category] || COLORS.muted;
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Get color hex value by color key
+ */
+export function getColorValue(color) {
+  return COLOR_VALUES[color] || COLOR_VALUES[CARD_COLORS.GRAY];
 }
 
-// Helper function to get category label by value
-export function getCategoryLabel(category) {
-  return CATEGORY_LABELS[category] || category;
+/**
+ * Get color label (from deck's custom labels or default)
+ */
+export function getColorLabel(color, customLabels = {}) {
+  return customLabels[color] || DEFAULT_COLOR_LABELS[color] || color;
+}
+
+// ============================================
+// LEGACY SUPPORT (for migration)
+// ============================================
+
+// Legacy category enum values (kept for backwards compatibility)
+export const CATEGORIES = {
+  PLOT: 'plot',
+  CHARACTER: 'character',
+  WORLD: 'world',
+  THEME: 'theme',
+  TWIST: 'twist',
+  SCENE: 'scene',
+};
+
+// Legacy category colors
+export const CATEGORY_COLORS = {
+  [CATEGORIES.PLOT]: '#C8430A',
+  [CATEGORIES.CHARACTER]: '#1A6B5A',
+  [CATEGORIES.WORLD]: '#2952A3',
+  [CATEGORIES.THEME]: '#7B3FA8',
+  [CATEGORIES.TWIST]: '#B8830A',
+  [CATEGORIES.SCENE]: '#555555',
+};
+
+// Map legacy category to new color
+export const CATEGORY_TO_COLOR = {
+  [CATEGORIES.PLOT]: CARD_COLORS.ORANGE,
+  [CATEGORIES.CHARACTER]: CARD_COLORS.GREEN,
+  [CATEGORIES.WORLD]: CARD_COLORS.BLUE,
+  [CATEGORIES.THEME]: CARD_COLORS.PURPLE,
+  [CATEGORIES.TWIST]: CARD_COLORS.RED,
+  [CATEGORIES.SCENE]: CARD_COLORS.GRAY,
+};
+
+// Legacy helper (deprecated, use getColorValue instead)
+export function getCategoryColor(category) {
+  return CATEGORY_COLORS[category] || COLORS.muted;
 }

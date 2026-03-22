@@ -77,3 +77,80 @@ body {
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
 }
+
+/* 3D Flip Animation Utilities */
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Peeking card pull-up animation */
+@keyframes pull-up {
+  0% {
+    transform: translateX(-50%) translateY(70%);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-10%);
+  }
+  100% {
+    transform: translateX(-50%) translateY(-100vh);
+    opacity: 0;
+  }
+}
+
+.animate-pull-up {
+  animation: pull-up 0.4s ease-in forwards;
+}
+
+/* Card placement animation */
+@keyframes card-place {
+  0% {
+    transform: scale(1.1) translateY(-20px);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.02) translateY(5px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-card-place {
+  animation: card-place 0.3s ease-out;
+}
+
+/* Composer entrance animation */
+@keyframes composer-enter {
+  0% {
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-composer-enter {
+  animation: composer-enter 0.3s ease-out;
+}
+
+/* Backdrop fade animation */
+@keyframes backdrop-fade {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-backdrop-fade {
+  animation: backdrop-fade 0.2s ease-out;
+}

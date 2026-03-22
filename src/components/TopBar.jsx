@@ -1,52 +1,50 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
-  FILTER_OPTIONS,
   DEFAULT_DECK_TITLE,
+  VIEW_MODES,
+  VIEW_MODE_LABELS,
 } from '../lib/constants';
 
 /**
- * TopBar component - deck title, actions, filters, and search
- *
- * @param {Object} props
- * @param {string} props.deckTitle - Current deck title
- * @param {function} props.onTitleChange - Callback when title changes
- * @param {function} props.onNewCard - Callback to create new card
- * @param {function} props.onShuffle - Callback to shuffle cards
- * @param {function} props.onSummarize - Callback to generate AI summary
- * @param {function} props.onShare - Callback to share deck
- * @param {function} props.onExport - Callback to export deck as JSON
- * @param {string} props.activeFilter - Currently active category filter
- * @param {function} props.onFilterChange - Callback when filter changes
- * @param {string} props.characterFilter - Currently selected character filter
- * @param {Array} props.characters - Array of unique character names
- * @param {function} props.onCharacterFilterChange - Callback when character filter changes
- * @param {string} props.searchQuery - Current search query
- * @param {function} props.onSearchChange - Callback when search changes
- * @param {string} props.saveStatus - Save status ('saved' | 'saving' | 'unsaved')
- * @param {function} props.onMenuToggle - Callback to toggle mobile sidebar
- * @param {boolean} props.isMobileSidebarOpen - Whether mobile sidebar is open
+ * TopBar component - deck title, tabs, view mode, and actions
  */
 function TopBar({
   deckTitle = DEFAULT_DECK_TITLE,
   onTitleChange,
   onNewCard,
   onShuffle,
-  onSummarize,
   onShare,
   onExport,
-  activeFilter = 'all',
-  onFilterChange,
-  characterFilter = null,
-  characters = [],
-  onCharacterFilterChange,
-  searchQuery = '',
-  onSearchChange,
+  onSettings,
+  activeTab = 'story',
+  onTabChange,
+  viewMode = VIEW_MODES.MANUAL,
+  onViewModeChange,
+  peekingCardVisible = true,
+  onTogglePeekingCard,
+  readOnly = false,
   saveStatus = 'saved',
-  onMenuToggle,
-  isMobileSidebarOpen = false,
 }) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(deckTitle);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const actionsRef = useRef(null);
+
+  // Close actions menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (actionsRef.current && !actionsRef.current.contains(event.target)) {
+        setIsActionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Update title value when deckTitle prop changes
+  useEffect(() => {
+    setTitleValue(deckTitle);
+  }, [deckTitle]);
 
   const handleTitleBlur = () => {
     setIsEditingTitle(false);
@@ -68,19 +66,10 @@ function TopBar({
 
   return (
     <header className="bg-white border-b border-faint sticky top-0 z-40">
-      {/* Top row: Title and actions */}
+      {/* Main row: Title, tabs, view mode, actions */}
       <div className="flex items-center justify-between px-4 md:px-6 py-3">
-        {/* Left side: hamburger (mobile) + title + save status */}
-        <div className="flex items-center gap-2 md:gap-3">
-          {/* Hamburger menu button (mobile/tablet only) */}
-          <button
-            onClick={onMenuToggle}
-            className="lg:hidden p-1.5 -ml-1.5 text-ink hover:bg-cream rounded-lg transition-colors"
-            aria-label={isMobileSidebarOpen ? 'Close menu' : 'Open menu'}
-          >
-            {isMobileSidebarOpen ? <XIcon /> : <MenuIcon />}
-          </button>
-
+        {/* Left side: Title + save status */}
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
           {isEditingTitle ? (
             <input
               type="text"
@@ -89,13 +78,14 @@ function TopBar({
               onBlur={handleTitleBlur}
               onKeyDown={handleTitleKeyDown}
               autoFocus
-              className="font-display text-xl md:text-2xl text-ink bg-transparent border-b-2 border-plot focus:outline-none px-1 -mx-1"
-              style={{ minWidth: '150px' }}
+              className="font-display text-xl md:text-2xl text-ink bg-transparent border-b-2 border-ink focus:outline-none px-1 -mx-1 min-w-0"
+              style={{ minWidth: '120px', maxWidth: '300px' }}
             />
           ) : (
             <h1
               onClick={() => onTitleChange ? setIsEditingTitle(true) : undefined}
-              className={`font-display text-xl md:text-2xl text-ink ${onTitleChange ? 'cursor-pointer hover:text-ink/70' : ''} transition-colors truncate max-w-[200px] md:max-w-none`}
+              className={`font-display text-xl md:text-2xl text-ink ${onTitleChange ? 'cursor-pointer hover:text-ink/70' : ''} transition-colors truncate`}
+              style={{ maxWidth: '300px' }}
               title={onTitleChange ? 'Click to edit title' : undefined}
             >
               {deckTitle}
@@ -104,120 +94,149 @@ function TopBar({
           <SaveIndicator status={saveStatus} />
         </div>
 
-        {/* Action buttons (desktop only) */}
-        <div className="hidden lg:flex items-center gap-2">
-          <ActionButton onClick={onNewCard} primary>
-            <PlusIcon />
-            New Card
-          </ActionButton>
-
-          <ActionButton onClick={onShuffle}>
-            <ShuffleIcon />
-            Shuffle
-          </ActionButton>
-
-          <ActionButton onClick={onSummarize}>
-            <SparklesIcon />
-            Summarize
-          </ActionButton>
-
-          <ActionButton onClick={onShare}>
-            <ShareIcon />
-            Share
-          </ActionButton>
-
-          <ActionButton onClick={onExport}>
-            <ExportIcon />
-            Export
-          </ActionButton>
+        {/* Center: Tab switcher */}
+        <div className="hidden md:flex items-center">
+          <TabSwitcher activeTab={activeTab} onTabChange={onTabChange} />
         </div>
 
-        {/* Mobile action buttons (only most important ones) */}
-        <div className="flex lg:hidden items-center gap-1">
-          <ActionButton onClick={onNewCard} primary>
-            <PlusIcon />
-          </ActionButton>
-          <ActionButton onClick={onShare}>
-            <ShareIcon />
-          </ActionButton>
-        </div>
-      </div>
-
-      {/* Bottom row: Filters and search */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between px-4 md:px-6 py-2 gap-2 bg-cream/50">
-        {/* Category filter pills (horizontally scrollable on mobile) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
-          {FILTER_OPTIONS.map((option) => (
-            <FilterPill
-              key={option.value}
-              label={option.label}
-              color={option.color}
-              active={activeFilter === option.value}
-              onClick={() => onFilterChange?.(option.value)}
-            />
-          ))}
-        </div>
-
-        {/* Character filter and search */}
+        {/* Right side: View mode + actions */}
         <div className="flex items-center gap-2 md:gap-3">
-          {/* Character filter dropdown */}
-          {characters.length > 0 && (
-            <div className="relative flex-shrink-0">
-              <select
-                value={characterFilter || ''}
-                onChange={(e) => onCharacterFilterChange?.(e.target.value || null)}
-                className="appearance-none pl-3 pr-8 py-1.5 bg-white border border-faint rounded-lg text-sm text-ink focus:outline-none focus:ring-2 focus:ring-plot/30 focus:border-plot cursor-pointer"
-              >
-                <option value="">All Characters</option>
-                {characters.map((char) => (
-                  <option key={char} value={char}>
-                    {char}
-                  </option>
-                ))}
-              </select>
-              <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
-            </div>
+          {/* View mode selector (desktop) */}
+          <div className="hidden md:block">
+            <ViewModeSelector
+              viewMode={viewMode}
+              onViewModeChange={onViewModeChange}
+            />
+          </div>
+
+          {/* New card button */}
+          {!readOnly && (
+            <button
+              onClick={onNewCard}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-ink text-cream rounded-lg text-sm font-medium hover:bg-ink/90 transition-colors"
+            >
+              <PlusIcon />
+              <span className="hidden md:inline">New Card</span>
+            </button>
           )}
 
-          {/* Search input */}
-          <div className="relative flex-1 md:flex-none">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => onSearchChange?.(e.target.value)}
-              placeholder="Search cards..."
-              className="pl-9 pr-3 py-1.5 w-full md:w-56 bg-white border border-faint rounded-lg text-sm text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-plot/30 focus:border-plot"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => onSearchChange?.('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted hover:text-ink"
-              >
-                <XIcon />
-              </button>
+          {/* Actions menu */}
+          <div className="relative" ref={actionsRef}>
+            <button
+              onClick={() => setIsActionsOpen(!isActionsOpen)}
+              className="p-2 text-muted hover:text-ink hover:bg-cream rounded-lg transition-colors"
+              aria-label="More actions"
+            >
+              <MoreIcon />
+            </button>
+
+            {isActionsOpen && (
+              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-faint py-1 z-50">
+                {!readOnly && (
+                  <>
+                    <ActionMenuItem onClick={() => { onShuffle?.(); setIsActionsOpen(false); }}>
+                      <ShuffleIcon />
+                      Shuffle Cards
+                    </ActionMenuItem>
+                    <ActionMenuItem onClick={() => { onTogglePeekingCard?.(); setIsActionsOpen(false); }}>
+                      {peekingCardVisible ? <EyeOffIcon /> : <EyeIcon />}
+                      {peekingCardVisible ? 'Hide New Card' : 'Show New Card'}
+                    </ActionMenuItem>
+                    <div className="border-t border-faint my-1" />
+                  </>
+                )}
+                <ActionMenuItem onClick={() => { onShare?.(); setIsActionsOpen(false); }}>
+                  <ShareIcon />
+                  Share Deck
+                </ActionMenuItem>
+                <ActionMenuItem onClick={() => { onExport?.(); setIsActionsOpen(false); }}>
+                  <ExportIcon />
+                  Export JSON
+                </ActionMenuItem>
+                {!readOnly && (
+                  <>
+                    <div className="border-t border-faint my-1" />
+                    <ActionMenuItem onClick={() => { onSettings?.(); setIsActionsOpen(false); }}>
+                      <SettingsIcon />
+                      Settings
+                    </ActionMenuItem>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>
+      </div>
+
+      {/* Mobile: Tab switcher + view mode */}
+      <div className="flex md:hidden items-center justify-between px-4 py-2 bg-cream/50 border-t border-faint/50">
+        <TabSwitcher activeTab={activeTab} onTabChange={onTabChange} />
+        <ViewModeSelector viewMode={viewMode} onViewModeChange={onViewModeChange} />
       </div>
     </header>
   );
 }
 
 /**
- * Action button component
+ * Tab switcher component - Story | Characters
  */
-function ActionButton({ onClick, primary = false, children }) {
+function TabSwitcher({ activeTab, onTabChange }) {
+  return (
+    <div className="inline-flex bg-cream rounded-lg p-0.5">
+      <button
+        onClick={() => onTabChange?.('story')}
+        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+          activeTab === 'story'
+            ? 'bg-white text-ink shadow-sm'
+            : 'text-muted hover:text-ink'
+        }`}
+      >
+        Story
+      </button>
+      <button
+        onClick={() => onTabChange?.('characters')}
+        className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+          activeTab === 'characters'
+            ? 'bg-white text-ink shadow-sm'
+            : 'text-muted hover:text-ink'
+        }`}
+      >
+        Characters
+      </button>
+    </div>
+  );
+}
+
+/**
+ * View mode selector dropdown
+ */
+function ViewModeSelector({ viewMode, onViewModeChange }) {
+  return (
+    <div className="relative">
+      <select
+        value={viewMode}
+        onChange={(e) => onViewModeChange?.(e.target.value)}
+        className="appearance-none pl-3 pr-8 py-1.5 bg-white border border-faint rounded-lg text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ink/20 cursor-pointer"
+      >
+        {Object.entries(VIEW_MODES).map(([key, value]) => (
+          <option key={value} value={value}>
+            {VIEW_MODE_LABELS[value]}
+          </option>
+        ))}
+      </select>
+      <ChevronDownIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+    </div>
+  );
+}
+
+/**
+ * Action menu item
+ */
+function ActionMenuItem({ onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className={`
-        inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
-        ${primary
-          ? 'bg-ink text-cream hover:bg-ink/90'
-          : 'bg-cream text-ink hover:bg-faint/30'
-        }
-      `}
+      className="w-full px-3 py-2 text-left text-sm text-ink hover:bg-cream flex items-center gap-2 transition-colors"
     >
       {children}
     </button>
@@ -225,40 +244,14 @@ function ActionButton({ onClick, primary = false, children }) {
 }
 
 /**
- * Filter pill component
- */
-function FilterPill({ label, color, active, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all
-        ${active
-          ? 'bg-ink text-cream'
-          : 'bg-white text-muted hover:text-ink border border-faint hover:border-muted'
-        }
-      `}
-    >
-      {color && (
-        <span
-          className="w-2 h-2 rounded-full"
-          style={{ backgroundColor: color }}
-        />
-      )}
-      {label}
-    </button>
-  );
-}
-
-/**
- * Save status indicator component
+ * Save status indicator
  */
 function SaveIndicator({ status }) {
   if (status === 'saved') {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted">
         <CheckIcon className="w-3 h-3 text-green-600" />
-        Saved
+        <span className="hidden md:inline">Saved</span>
       </span>
     );
   }
@@ -267,16 +260,15 @@ function SaveIndicator({ status }) {
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted">
         <span className="w-3 h-3 border border-muted border-t-transparent rounded-full animate-spin" />
-        Saving...
+        <span className="hidden md:inline">Saving...</span>
       </span>
     );
   }
 
-  // unsaved
   return (
     <span className="inline-flex items-center gap-1 text-xs text-amber-600">
       <DotIcon className="w-3 h-3" />
-      Unsaved changes
+      <span className="hidden md:inline">Unsaved</span>
     </span>
   );
 }
@@ -298,14 +290,6 @@ function ShuffleIcon() {
   );
 }
 
-function SparklesIcon() {
-  return (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-    </svg>
-  );
-}
-
 function ShareIcon() {
   return (
     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -322,18 +306,10 @@ function ExportIcon() {
   );
 }
 
-function SearchIcon({ className }) {
+function MoreIcon() {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-    </svg>
-  );
-}
-
-function XIcon() {
-  return (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
     </svg>
   );
 }
@@ -362,10 +338,28 @@ function ChevronDownIcon({ className }) {
   );
 }
 
-function MenuIcon() {
+function EyeIcon() {
   return (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   );
 }
