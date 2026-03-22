@@ -1,0 +1,63 @@
+/* Google Fonts - must be first */
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Serif+Display&family=Figtree:wght@400;500;600&display=swap');
+
+@import "tailwindcss";
+
+/* Storycards Design System */
+@theme {
+  /* Base colors */
+  --color-cream: #FAF8F3;
+  --color-ink: #1A1714;
+  --color-muted: #6B665E;
+  --color-faint: #B8B3AA;
+
+  /* Category colors */
+  --color-plot: #C8430A;
+  --color-character: #1A6B5A;
+  --color-world: #2952A3;
+  --color-theme: #7B3FA8;
+  --color-twist: #B8830A;
+  --color-scene: #555555;
+
+  /* Typography */
+  --font-display: 'DM Serif Display', serif;
+  --font-body: 'Figtree', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Utility classes for category colors */
+.category-plot { --category-color: var(--color-plot); }
+.category-character { --category-color: var(--color-character); }
+.category-world { --category-color: var(--color-world); }
+.category-theme { --category-color: var(--color-theme); }
+.category-twist { --category-color: var(--color-twist); }
+.category-scene { --category-color: var(--color-scene); }
+
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
