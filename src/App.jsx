@@ -2,6 +2,7 @@ import { useEffect, useCallback, useState } from 'react';
 import TopBar from './components/TopBar';
 import Board from './components/Board';
 import Sidebar from './components/Sidebar';
+import Onboarding from './components/Onboarding';
 import useDeckStore from './store/deckStore';
 import useDeck from './hooks/useDeck';
 import useCards from './hooks/useCards';
@@ -212,6 +213,9 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen bg-cream">
+      {/* Onboarding overlay for first-time visitors */}
+      <Onboarding />
+
       {/* Read-only banner */}
       {!isOwner && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-center">

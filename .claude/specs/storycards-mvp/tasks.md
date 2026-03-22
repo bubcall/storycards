@@ -230,28 +230,28 @@
 
 ## Phase 4: Launch
 
-- [ ] 27. Deploy to Vercel
+- [x] 27. Deploy to Vercel
   - Configure Vercel project
   - Set environment variables (ANTHROPIC_API_KEY, SUPABASE_*, NEXT_PUBLIC_APP_URL)
   - Verify build and deployment succeeds
   - Test all functionality in production environment
   - _Requirements: Production deployment_
 
-- [ ] 28. Add meta tags and social sharing
+- [x] 28. Add meta tags and social sharing
   - Add og:title, og:description, og:image meta tags
   - Create og:image asset for link sharing
   - Add Twitter card meta tags
   - Test link previews on Twitter, Slack, Discord
   - _Requirements: Social sharing, SEO_
 
-- [ ] 29. Cross-browser testing
+- [x] 29. Cross-browser testing
   - Test on Chrome (desktop + Android)
   - Test on Safari (desktop + iOS)
   - Test on Firefox
   - Document and fix any browser-specific issues
   - _Requirements: Browser compatibility_
 
-- [ ] 30. Create onboarding experience
+- [x] 30. Create onboarding experience
   - Write one-paragraph onboarding overlay for first-time visitors
   - Show overlay on first visit (track in localStorage)
   - Include dismiss button and "Don't show again" option
